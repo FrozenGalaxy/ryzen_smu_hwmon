@@ -1,19 +1,61 @@
 # ryzen_smu_hwmon
 
-Hardware monitoring driver for AMD Ryzen CPUs using the Ryzen SMU PM table.
+Out-of-tree Linux **hwmon** driver for AMD Ryzen CPUs, built on top of the
+exported **Ryzen SMU (System Management Unit) API**.
+
+This driver exposes per-core temperatures, CCD temperatures, package / SoC
+power, and core power via the standard `hwmon` interface.
+
+---
+
+## Status
+
+- **CPU support (currently):**
+  - Raphael (Zen 4)
+  - Ryzen 9 7950X3D (CPUID-gated)
+
+- **Driver type:** out-of-tree, DKMS-friendly  
+
+---
 
 ## Requirements
 
-- Linux kernel with `ryzen_smu` module installed
-- Exported SMU API (PM table, CPUID helpers)
+This driver depends on a **modified `ryzen_smu` kernel module** that exports
+a public SMU API.
+
+You must install **one** of the following first:
+
+- Source repository:  
+  https://github.com/FrozenGalaxy/ryzen_smu
+
+- DKMS package:  
+  https://github.com/FrozenGalaxy/ryzen_smu-dkms
+
+Required exported interfaces:
+- PM table access
+- CPUID helpers
+- Device anchor (`struct device *`)
+
+---
+
+## Installation (DKMS – recommended)
+
+A ready-to-use **PKGBUILD** is provided in this repository.
+
+On Arch Linux or Arch-based distributions:
+
+```bash
+makepkg -si
+```
 
 ## Build (manual)
-
 ```bash
 make SMU_INC=/path/to/ryzen_smu/include \
      SMU_SYMVERS=/path/to/ryzen_smu/Module.symvers
 ```
-Example output:
+
+### Example output:
+
 ```bash
 ryzen_smu_hwmon-pci-0000
 Adapter: PCI adapter
@@ -53,5 +95,5 @@ Core11 Power:    4.16 W
 Core12 Power:    4.16 W  
 Core13 Power:    4.12 W  
 Core14 Power:    3.94 W  
-Core15 Power:    4.17 W 
-```
+Core15 Power:    4.17 W
+``` 
