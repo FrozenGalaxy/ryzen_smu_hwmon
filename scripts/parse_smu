@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+import struct
+from pathlib import Path
+from statistics import mean
+
+FS_PATH = Path("/sys/kernel/ryzen_smu_drv")
+PM_PATH = FS_PATH / "pm_table"
+
+# ------------------------------------------------------------
+# Low-level helpers
+# ------------------------------------------------------------
+
+def read_pm():
+    x = None
+    with open(PM_PATH, "rb") as fp:
+        x = fp.read()
+    return x
+
+def f32(buf, off):
+    return struct.unpack("<f", buf[off:off+4])[0]
+
+def u32(buf, off):
+    return struct.unpack("<I", buf[off:off+4])[0]
+
+def read_block(buf, start, count):
+    return [f32(buf, start + i*4) for i in range(count)]
+
+def print_val(label, value, unit="", width=12):
+    if isinstance(value, float):
+        print(f"{label:<28} {value:>{width}.3f} {unit}")
+    else:
+        print(f"{label:<28} {value:>{width}} {unit}")
+
+# ------------------------------------------------------------
+# Main
+# ------------------------------------------------------------
+
+def main():
+    pm = read_pm()
+
+    print("\n=== Ryzen SMU Telemetry (corrected) ===\n")
+
+    # --------------------------------------------------------
+    # Temperatures (REAL telemetry, NOT control refs)
+    # --------------------------------------------------------
+
+    # Tctl is an averaged telemetry vector
+    tctl_block = read_block(pm, 0x0514, 8)
+    tctl_avg = mean(tctl_block)
+
+    # CCD temperature clusters
+    ccd_block = read_block(pm, 0x0534, 8)
+
+    # IO / fabric / memory thermals
+    io_block = read_block(pm, 0x05F4, 8)
+
+    print("=== Temperatures ===")
+    print_val("Tctl (avg)", tctl_avg, "°C")
+    for i, v in enumerate(ccd_block):
+        print_val(f"CCD Temp {i}", v, "°C")
+    for i, v in enumerate(io_block):
+        print_val(f"IO/Fabric Temp {i}", v, "°C")
+
+    # --------------------------------------------------------
+    # Power (canonical fields only)
+    # --------------------------------------------------------
+
+    ppt_mw = f32(pm, 0x0040)
+    pkg_w  = f32(pm, 0x00DC)
+    core_w = f32(pm, 0x00D4)
+    soc_w  = f32(pm, 0x00D8)
+
+    print("\n=== Power ===")
+    print_val("PPT Instant", ppt_mw, "mW")
+    print_val("Package Power", pkg_w, "W")
+    print_val("Core Power", core_w, "W")
+    print_val("SoC Power", soc_w, "W")
+
+    # --------------------------------------------------------
+    # Voltages
+    # --------------------------------------------------------
+
+    vcore_inst = f32(pm, 0x0048)
+    vcore_avg  = f32(pm, 0x004C)
+    vsoc       = f32(pm, 0x0148)
+
+    print("\n=== Voltages ===")
+    print_val("Vcore (instant)", vcore_inst, "V")
+    print_val("Vcore (avg)", vcore_avg, "V")
+    print_val("VSOC", vsoc, "V")
+
+    # --------------------------------------------------------
+    # Fabric / memory clocks
+    # --------------------------------------------------------
+
+    print("\n=== Fabric / Memory Clocks ===")
+    print_val("FCLK target", f32(pm, 0x0118), "MHz")
+    print_val("FCLK actual", f32(pm, 0x01A4), "MHz")
+    print_val("UCLK target", f32(pm, 0x0128), "MHz")
+    print_val("UCLK actual", f32(pm, 0x01A8), "MHz")
+    print_val("MCLK target", f32(pm, 0x0138), "MHz")
+    print_val("MCLK actual", f32(pm, 0x01AC), "MHz")
+
+    # --------------------------------------------------------
+    # SMU residency / state buckets (NOT per-core)
+    # --------------------------------------------------------
+
+    print("\n=== SMU State Residency Buckets ===")
+    for i in range(16):
+        v = f32(pm, 0x0294 + i*4)
+        print_val(f"SMU State {i}", v, "%")
+
+    # --------------------------------------------------------
+    # Package residency
+    # --------------------------------------------------------
+
+    print("\n=== Package Residency ===")
+    print_val("Active Residency", f32(pm, 0x02CC), "%")
+    print_val("Sleep Opportunity", f32(pm, 0x02C8), "%")
+
+    print("\nDone.\n")
+
+# ------------------------------------------------------------
+
+if __name__ == "__main__":
+    main()
