@@ -477,5 +477,5 @@ module_init(smu_hwmon_init);
 module_exit(smu_hwmon_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("You");
+MODULE_AUTHOR("Hagen Tesch <FrozenGalaxy>");
 MODULE_DESCRIPTION("Ryzen SMU hwmon driver (CPUID-gated, per-core temps & power)");
