@@ -13,6 +13,7 @@ power, and core power via the standard `hwmon` interface.
 - **CPU support (currently):**
   - Raphael (Zen 4)
   - Ryzen 9 7950X3D (CPUID-gated)
+  - Ryzen 9 7950X
 
 - **Driver type:** out-of-tree, DKMS-friendly  
 
@@ -53,6 +54,32 @@ makepkg -si
 make SMU_INC=/path/to/ryzen_smu/include \
      SMU_SYMVERS=/path/to/ryzen_smu/Module.symvers
 ```
+
+## Load the module
+### temporarily
+```bash
+sudo insmod ryzen_smu_hwmon.ko
+
+# then verify working:
+lsmod | grep ryzen_smu_hwmon
+dmesg | grep -i ryzen_smu_hwmon
+grep . /sys/class/hwmon/hwmon*/name
+
+# verify in lm-sensors:
+sensors
+```
+### permanent
+```bash
+sudo mkdir -p /lib/modules/$(uname -r)/extra
+sudo cp ryzen_smu_hwmon.ko /lib/modules/$(uname -r)/extra/
+sudo depmod -a
+echo ryzen_smu_hwmon | sudo tee /etc/modules-load.d/ryzen_smu_hwmon.conf
+```
+```bash
+# verify autoloaded after reboot
+lsmod | grep -E 'ryzen_smu|ryzen_smu_hwmon'
+```
+
 
 ### Example output:
 
